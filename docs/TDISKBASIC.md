@@ -1,4 +1,6 @@
 # Toshiba DISK BASIC
+## Important
+When i first started on this file, i have found a person already talk about it, and how they discover the layout of the disk through the string, but there is a problem. You see normally people will use CHS coordinate system with S(sector) starts at 1 ([link](https://en.wikipedia.org/wiki/Logical_block_addressing#CHS_conversion)), not zero, but in this case, maybe Toshiba don't know that so they use 0 as the starts of sector. So i decide to adjust all information of the disk related in [post [1]](#credits-resources--reference) will be used based-1. If you want to see original post, please remember that.
 ## Credits, Resources & Reference
 - [1]. Special thanks to retrocomputing stackexchange user [**Simon Kissane**](https://retrocomputing.stackexchange.com/users/17803/simon-kissane) by creating this [answer](https://retrocomputing.stackexchange.com/a/27234)
 - [2]. [Microsoft BASIC-80 version 5.0 Reference Manual (1979)](https://bitsavers.org/pdf/microsoft/cpm/Microsoft_BASIC-80_5.0_Reference_1979.pdf):
@@ -14,9 +16,11 @@
 - 2 clusters/track
 - 35 tracks/side
 - 2 sides/floppy
+- **Evidence**: at offset 0x22CD0 ([more](#layout))
 
 ## Layout
 When using `strings` program, a meaningful text appeared to be the disk layout at offset 0x22CD0
+**Note**: I preserve the original string (based-0). See [this](#important)
 ```
 *** 8 sectors/cluster, 2 clusters/track, 35 tracks/side, 2 sides/floppy
 *** track 0 not used because its single-density
@@ -82,7 +86,7 @@ The FAT8 directory starts exactly at 0x24000 (C:18,H:0,S:0) and contains 15 used
 ```
 </details>
 
-The FAT table starts at offset 0x24d00 (C:18,H:0,S:13) appeared to have 2 copies of itself at offset 0x24e00 (C:18,H:0,S:14) and offset 0x24f00 (C:18,H:0,S:15) but with two markers: (**guess works only**)
+The FAT table starts at offset 0x24d00 (C:18,H:0,S:14) appeared to have 2 copies of itself at offset 0x24e00 (C:18,H:0,S:15) and offset 0x24f00 (C:18,H:0,S:15) but with one markers: (**guess works only**)
 
 <details><summary>FAT copies</summary>
 
@@ -103,5 +107,6 @@ The FAT table starts at offset 0x24d00 (C:18,H:0,S:13) appeared to have 2 copies
 </details>
 
 - Begin marker: ``1B E2 8D 0A``
-- End marker: ``FF``  
+
+I still don't know why only two stubs after that have the bytes ``1B E2 8D 0A`` so i guess it as begin marker, may not contribute to the actual data of the table. For more see the FAT section in [this](./Alphatronic.md#file-allocation-table)    
 FAT8 uses 8 bits to address the clusters on the disk. Because of this, extract values out of table is like a piece of cake.

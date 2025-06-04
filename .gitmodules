@@ -1,0 +1,3 @@
+[submodule "submodules/aparse"]
+	path = submodules/aparse
+	url = https://github.com/binaryfox0/aparse.git

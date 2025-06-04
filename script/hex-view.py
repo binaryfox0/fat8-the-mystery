@@ -46,7 +46,7 @@ def read_and_display_hex(
         sys.exit(1)
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Hex view for markdown with LaTeX-safe output")
+    parser = argparse.ArgumentParser(description="Hex view for markdown")
     parser.add_argument("file", type=str, help="Input binary file")
     parser.add_argument("offset", type=lambda x: int(x, 0), help="Start offset in bytes")
     parser.add_argument("length", type=lambda x: int(x, 0), help="Number of bytes to display")
