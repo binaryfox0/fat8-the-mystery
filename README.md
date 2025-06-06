@@ -16,4 +16,4 @@ The following files have been partially mapped, with known structures and offset
 - [Alphatronic PC](./docs/Alphatronic.md)
 
 ## Contributions
-If you found something like new image, please submit it through [Issues](https://github.com/binaryfox0/fat8-the-mystery)
+If you found something like new image, please submit it through [Discussion](https://github.com/binaryfox0/fat8-the-mystery/discussions)

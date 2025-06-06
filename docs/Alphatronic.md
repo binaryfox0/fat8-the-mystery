@@ -1,4 +1,6 @@
 # Alphatronic
+## Important
+For this file I will use 1-based sector indexing, completely different than the previous file
 ## Information
 - **Original file**: [alpha4.imd](./../images/alpha4.imd) (**ImageDisk format**)
 - **Original file link**: https://winworldpc.com/download/7922cb9c-c2aa-c592-7311-c3a5c28f1352
@@ -17,6 +19,19 @@ This file isn't easy anymore for me (cuz no one has analyzed it yet), but by usi
 
 - track 18 side 1 holds directory and file-allocation-table
 ## Structure
+### FAT8 directory
+<details>
+<summary>Hex view</summary>
+
+```
+00025000 46 4F 52 4D 41 54 20 20 20 80 48 FF FF FF FF FF   FORMAT   .H.....
+00025010 53 59 53 43 4F 50 20 20 20 80 49 FF FF FF FF FF   SYSCOP   .I.....
+00025020 44 49 53 43 4F 50 20 20 20 80 45 FF FF FF FF FF   DISCOP   .E.....
+00025030 50 43 44 55 4D 50 20 20 20 80 4C FF FF FF FF FF   PCDUMP   .L.....
+```
+</details>
+The FAT8 directory starts exactly at 0x24000 (C:18,H:0,S:0) and contains 15 used entries and 113 reserved entries  
+
 ### File Allocation Table
 <details><summary>Hex view</summary>
 
