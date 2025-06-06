@@ -39,11 +39,15 @@ typedef struct fat8_filename {
 } fat8_filename;
 
 typedef struct {
-    char file_name[9];
+    char file_name[9]; // fat8_filename
     uint8_t attribute;
     uint8_t ptr;
     uint8_t reserved[5];
 } fat8_file_entry;
+
+typedef struct {
+    
+} fat8_file_format;
 #pragma pack(pop)
 
 typedef enum fat8_file_attribute 
