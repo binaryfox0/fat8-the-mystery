@@ -3,9 +3,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "aparse.h"
+#include "fat8.h"
 
+#define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
 
 #define FLOPPY_SECTOR_PER_TRACK 16
@@ -15,65 +18,35 @@
 #define FLOPPY_CLUSTER_SIZE 0x800  // 2048
 #define FLOPPY_SECTOR_SIZE  0x100  // 256
 
-// static inline int calculate_offset(int cylinder, int side, int sector, int base) {
-    // int logical_sector = ((cylinder * FLOPPY_SIDE_COUNT + side) * FLOPPY_SECTOR_PER_TRACK) + (sector - !!base);
-    // return logical_sector * FLOPPY_SECTOR_SIZE;
-// }
 
-void offset_to_chs(int offset,
-                   int heads_per_cylinder, int sectors_per_track, int base,
-                   int *cylinder, int *head, int *sector) {
-    int sectors_per_cylinder = heads_per_cylinder * sectors_per_track;
-
-    *cylinder = offset / sectors_per_cylinder;
-    int temp = offset % sectors_per_cylinder;
-
-    *head = temp / sectors_per_track;
-    *sector = (temp % sectors_per_track) + !!base;
-}
-
-#pragma pack(push, 1)
-typedef struct fat8_filename {
-    uint8_t stem[6];
-    uint8_t extension[3];
-} fat8_filename;
-
-typedef struct {
-    char file_name[9]; // fat8_filename
-    uint8_t attribute;
-    uint8_t ptr;
-    uint8_t reserved[5];
-} fat8_file_entry;
-
-typedef struct {
-    
-} fat8_file_format;
-#pragma pack(pop)
-
-typedef enum fat8_file_attribute 
+char* attribute_string(const uint8_t attribute)
 {
-    FAT8_FILE_BINARY      = 0200,
-    FAT8_FILE_FRAWC       = 0100, // Force read after write check
-    FAT8_FILE_EBCDIC      = 0040,
-    FAT8_WRITE_PROCTECTED = 0020
-} fat8_file_attribute;
+    static char buffer[32];
+    int index = 0;
+    memset(buffer, 0, sizeof(buffer));
 
-const char* attribute_string(const uint8_t attribute)
-{
-    
-    switch(attribute)
-    {
-    case FAT8_FILE_BINARY:
-        return "Binary";
-    case FAT8_FILE_FRAWC:
-        return "FRAWC";
-    case FAT8_FILE_EBCDIC:
-        return "EBCDIC";
-    case FAT8_WRITE_PROCTECTED:
-        return "Write-protected";
-    default:
-        return "Unknown";
+    struct {
+        uint8_t flag;
+        const char *name;
+    } attribs[] = {
+        { FAT8_FILE_ATTRIB_BINARY, "BINARY" },
+        { FAT8_FILE_ATTRIB_FRAWC,  "FRAWC"  },
+        { FAT8_FILE_ATTRIB_EBCDIC, "EBCDIC" },
+        { FAT8_FILE_ATTRIB_WP,     "WP"     }
+    };
+
+    for (size_t i = 0; i < sizeof(attribs) / sizeof(attribs[0]); ++i) {
+        if (attribute & attribs[i].flag) {
+            if (index > 0) {
+                strcat(buffer, ",");
+                index++;
+            }
+            strcat(buffer, attribs[i].name);
+            index += strlen(attribs[i].name);
+        }
     }
+
+    return buffer;
 }
 
 typedef struct analyze_metadata { char* filename; size_t offset; } analyze_metadata;
@@ -128,6 +101,52 @@ void analyze_fat_command(void* tmp)
     fclose(file);
 }
 
+void hex_dump(uint8_t* bytes, uint32_t size, uint32_t offset)
+{
+    for (uint32_t i = 0; i < size; i += 16)
+    {
+        uint32_t line_size = (size - i >= 16) ? 16 : (size - i);
+        printf("%08X  ", offset + i);
+        for (uint32_t j = 0; j < 16; j++){
+            if (j < line_size)
+                printf("%02X ", bytes[i + j]);
+            else
+                printf("   "); 
+        }
+        printf(" ");
+        for (uint32_t j = 0; j < line_size; j++) {
+            uint8_t c = bytes[i + j];
+            printf("%c", isprint(c) ? c : '.');
+        }
+        printf("\n");
+    }
+}
+
+
+void analyze_file_block_command(void* tmp)
+{
+    analyze_metadata *data = tmp;
+    FILE *file = fopen(data->filename, "rb");
+    if(!file){
+        printf("Failed to open specified image file: %s\n", strerror(errno));
+        return;
+    }
+    fseek(file, data->offset, SEEK_SET);
+    fat8_file_block fblk = {0};
+    fread(&fblk, 1, sizeof(fblk), file);
+    printf("File mode: 0o%04o\n", fblk.file_mode);
+    printf("First cluster FAT index: 0x%02X\n", fblk.first_cluster_fat_index);
+    printf("Last cluster FAT index: 0x%02X\n", fblk.last_cluster_fat_index);
+    printf("Last sector accessed: 0x%02X\n", fblk.last_sector_accessed);
+    printf("Disk number: %d\n", fblk.disk_number);
+    printf("Last buffer size: 0x%02X bytes\n", fblk.last_buffer_size);
+    printf("Buffer position: 0x%02X\n", fblk.buffer_position);
+    printf("File flags: 0o%04o\n", fblk.file_flags);
+    printf("Tab position: 0x%02X\n", fblk.tab_position);
+    hex_dump(fblk.sector_buffer, 128, data->offset + offsetof(fat8_file_block, sector_buffer));
+    fclose(file);
+}
+
 typedef struct calculate_offset_metadata { 
     uint16_t sides_per_floppy, sectors_per_track, sector_size; 
     char* string; 
@@ -175,25 +194,42 @@ int main(int argc, char** argv)
         aparse_arg_end_marker
     };
     aparse_arg calculate_chs[] = {
-        aparse_arg_number("sides/floppy",  0, sizeof(uint16_t), false, "Sides/floppy"),
-        aparse_arg_number("sectors/track", 0, sizeof(uint16_t), false, "Sectors/track"),
-        aparse_arg_number("bytes/sector",  0, sizeof(uint16_t), false, "Bytes/sector"),
-        aparse_arg_number("offset",        0, sizeof(size_t),   false, "Offsets"),
-        aparse_arg_number("base0",         0, sizeof(bool),     false, "If >0, sectors will start at 0-based indexing otherwise, using 1-based indexing"),
+        aparse_arg_number("sides/floppy",  0, sizeof(uint16_t), 
+            false, "Sides/floppy"),
+        aparse_arg_number("sectors/track", 0, sizeof(uint16_t), 
+            false, "Sectors/track"),
+        aparse_arg_number("bytes/sector",  0, sizeof(uint16_t), 
+            false, "Bytes/sector"),
+        aparse_arg_number("offset",        0, sizeof(size_t),   
+            false, "Offsets"),
+        aparse_arg_number("base0",         0, sizeof(bool),     
+            false, "If >0, sectors will start at 0-based indexing otherwise, using 1-based indexing"),
     };
     aparse_arg main_args[] = {
         aparse_arg_parser("command", (aparse_arg[]){
-            aparse_arg_subparser("analyze-dir", analyze, analyze_dir_command, "Analyze FAT8 directory",             analyze_metadata, filename, offset),
-            aparse_arg_subparser("analyze-fat", analyze, analyze_fat_command, "Analyze FAT8 File-Allocation-Table", analyze_metadata, filename, offset),
+            aparse_arg_subparser_impl("analyze", (aparse_arg[]){
+                aparse_arg_parser("subcommand", (aparse_arg[]){
+                    aparse_arg_subparser("dir", analyze, 
+                        analyze_dir_command, "Analyze FAT8 directory", analyze_metadata, filename, offset),
+                    aparse_arg_subparser("fat", analyze, 
+                        analyze_fat_command, "Analyze FAT8 File-Allocation-Table", analyze_metadata, filename, offset),
+                    aparse_arg_subparser("fblk", analyze, 
+                        analyze_file_block_command, "Analyze FAT8 file block", analyze_metadata, filename, offset),
+                    aparse_arg_end_marker
+                }),
+                aparse_arg_end_marker
+            }, analyze_file_block_command, "Analyze anything with given subcommand", 0, 0),
             aparse_arg_subparser_impl(
                 "calculate", (aparse_arg[]){
                     aparse_arg_parser("subcommand", (aparse_arg[]){
                         aparse_arg_subparser(
-                            "offset", calculate_offset, calculate_offset_command, "Calculate offset from given CHS coordinate",
-                            calculate_offset_metadata, sides_per_floppy, sectors_per_track, sector_size, string, base0),
+                            "offset", calculate_offset, calculate_offset_command, 
+                            "Calculate offset from given CHS coordinate",calculate_offset_metadata, 
+                            sides_per_floppy, sectors_per_track, sector_size, string, base0),
                         aparse_arg_subparser(
-                            "chs", calculate_chs, calculate_chs_command, "Calculate CHS coordinate with given offset", 
-                            calculate_chs_metadata, sides_per_floppy, sectors_per_track, sector_size, offset, base0),
+                            "chs", calculate_chs, calculate_chs_command, 
+                            "Calculate CHS coordinate with given offset", calculate_chs_metadata, 
+                            sides_per_floppy, sectors_per_track, sector_size, offset, base0),
                         aparse_arg_end_marker
                     })
                 }, calculate_offset_command, 

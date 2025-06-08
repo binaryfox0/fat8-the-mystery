@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 project(fat8-analyzer)
 add_executable(fat8-analyzer src/main.c)
+target_include_directories(fat8-analyzer PRIVATE include)
 add_subdirectory(submodules/aparse)
 target_link_libraries(fat8-analyzer PRIVATE aparse)

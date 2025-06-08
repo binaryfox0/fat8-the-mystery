@@ -11,6 +11,7 @@
 > [!IMPORTANT]  
 > These images are customized for this PC’s hardware and software configuration.      
 
+**Status**: Currently analyzing on **Toshiba T100 Disk BASIC**   
 The following files have been partially mapped, with known structures and offsets documented
 - [Toshiba T100 Disk BASIC](./docs/TDISKBASIC.md)
 - [Alphatronic PC](./docs/Alphatronic.md)
