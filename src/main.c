@@ -75,29 +75,79 @@ void analyze_dir_command(void* tmp)
     fclose(file);
 }
 
-typedef enum fat8_fat_entry {
-    FAT8_FAT_LAST_BASE = 0300, // 0xc0
-    FAT8_FAT_RESERVED  = 0xFE,
-    FAT8_FAT_FREE      = 0xFF
-} fat8_fat_entry;
 void analyze_fat_command(void* tmp)
 {
-    analyze_metadata* data = tmp;
+    analyze_metadata* data = (analyze_metadata*)tmp;
     FILE *file = fopen(data->filename, "rb");
-    if(!file){
-        printf("Failed to open specified image file: %s\n", strerror(errno));
+    if (!file) {
+        printf("Failed to open image file '%s': %s\n", data->filename, strerror(errno));
         return;
     }
+
     fseek(file, data->offset, SEEK_SET);
-    for(int i = 0; i < 0xff; i++)
-    {
-        uint8_t entry = 0;
-        fread(&entry, 1, 1, file);
-        if(entry == FAT8_FAT_FREE)
-            printf("Free cluster\n");
-        else if(entry == FAT8_FAT_RESERVED)
-            printf("Reserved cluster\n");
+
+    uint8_t fat[255] = {0};
+    if (fread(fat, 1, sizeof(fat), file) != sizeof(fat)) {
+        printf("Failed to read FAT table.\n");
+        fclose(file);
+        return;
     }
+
+    for (int i = 0; i < 255; i++) {
+        uint8_t entry = fat[i];
+
+        printf("FAT[0x%02X]: ", i);
+
+        if (entry == FAT8_FAT_FREE) {
+            printf("free\n");
+        } else if (entry == FAT8_FAT_RESERVED) {
+            printf("reserved\n");
+        } else if (entry >= FAT8_FAT_EOF_BASE && entry < FAT8_FAT_RESERVED) {
+            printf("EOF marker (0x%02X, %d sectors)\n", entry, entry - FAT8_FAT_EOF_BASE);
+        } else if (entry == 0xFF) {
+            printf("invalid (0xFF)\n");
+        } else {
+            // Follow FAT chain
+            bool visited[255] = {0};
+            uint8_t current = i;
+            int chain_len = 0;
+
+            while (true) {
+                if (visited[current]) {
+                    printf("0x%02X (loop detected)\n", current);
+                    break;
+                }
+
+                visited[current] = true;
+                uint8_t next = fat[current];
+
+                if (chain_len > 0) printf(" -> ");
+                printf("0x%02X", current);
+                chain_len++;
+
+                if (next >= FAT8_FAT_EOF_BASE && next < FAT8_FAT_RESERVED) {
+                    printf(" -> 0x%02X (EOF, %d sectors)\n", next, next - FAT8_FAT_EOF_BASE);
+                    break;
+                } else if (next == FAT8_FAT_RESERVED) {
+                    printf(" -> 0x%02X (Reserved?)\n", next);
+                    break;
+                } else if (next == FAT8_FAT_FREE) {
+                    printf(" -> 0x%02X (Free?)\n", next);
+                    break;
+                } else if (next == 0xFF) {
+                    printf(" -> 0xFF (Invalid)\n");
+                    break;
+                } else {
+                    current = next;
+                }
+            }
+
+            if (chain_len == 1) {
+                printf(" (singleton)\n");
+            }
+        }
+    }
+
     fclose(file);
 }
 

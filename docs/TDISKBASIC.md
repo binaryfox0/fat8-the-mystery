@@ -1,6 +1,4 @@
 # Toshiba DISK BASIC
-## Important
-When i first started on this file, i have found a person already talk about it, and how they discover the layout of the disk through the string, but there is a problem. You see normally people will use CHS coordinate system with S(sector) starts at 1 ([link](https://en.wikipedia.org/wiki/Logical_block_addressing#CHS_conversion)), not zero, but in this case, maybe Toshiba don't know that so they use 0 as the starts of sector. So i decide to adjust all information of the disk related in [post [1]](#credits-resources--reference) will be used based-1. If you want to see original post, please remember that.
 ## Credits, Resources & Reference
 - [1]. Special thanks to retrocomputing stackexchange user [**Simon Kissane**](https://retrocomputing.stackexchange.com/users/17803/simon-kissane) by creating this [answer](https://retrocomputing.stackexchange.com/a/27234)
 - [2]. [Microsoft BASIC-80 version 5.0 Reference Manual (1979)](https://bitsavers.org/pdf/microsoft/cpm/Microsoft_BASIC-80_5.0_Reference_1979.pdf). [**Archived**](../resources/Microsoft_BASIC-80_5.0_Reference_1979.pdf):
@@ -20,7 +18,6 @@ When i first started on this file, i have found a person already talk about it, 
 
 ## Layout
 When using `strings` program, a meaningful text appeared to be the disk layout at offset 0x22CD0
-**Note**: I preserve the original string (based-0). See [this](#important)
 ```
 *** 8 sectors/cluster, 2 clusters/track, 35 tracks/side, 2 sides/floppy
 *** track 0 not used because its single-density
@@ -31,7 +28,7 @@ When using `strings` program, a meaningful text appeared to be the disk layout a
 *** tracks 19-34 hold user files
 ```
 We can calculate the offsets of each section using the following formula:   
-```offset = (((C * heads_per_sector + H) * sectors_per_track) + S) * bytes_per_sector```   
+```offset = (((C * heads_per_sector + H) * sectors_per_track) + (S - 1)) * bytes_per_sector```   
 **Note**: track = cylinder(C); head(H) = side; sector(S)   
 Offsets of each section (in bytes):
 - 0x00000000 - 0x00000FFF unused (aka NULL)
@@ -42,6 +39,10 @@ Offsets of each section (in bytes):
 - 0x00026000 - 0x00045FFF hold user files
 - 0x00046000 - 0x0004FFFF unused (aka NULL)
 ## Structure
+## Unknown structure
+At track 1 (0x1000) where the strings says the location of IPL (Initial Program Loader) and BASIC: There is two instructions: `jp 0xd049` and `jp 0xd02c` but it point to two identical structure if load to memory at address `0xd000`. Pointed to file offset `0x102C` and `0x1049` with the size of 0x1D (29) bytes, maybe refer to some metadata about the filesystem and even the address to load the OS.
+
+At track 18 side 1: where the strings says the location of user files
 ### FAT8 directory
 <details>
 <summary>Hex view</summary>

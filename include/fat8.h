@@ -35,12 +35,20 @@ typedef enum fat8_file_flag
     FAT8_FILE_FLAG_BUFFER_EMPTY     = 0002
 } fat8_file_flag;
 
+// p165 h11.2.5
+typedef enum fat8_fat_entry {
+    FAT8_FAT_EOF_BASE  = 0300, // 0xc0
+    FAT8_FAT_RESERVED  = 0xFE,
+    FAT8_FAT_FREE      = 0xFF
+} fat8_fat_entry;
 #pragma pack(push, 1)
+// p158 h1
 typedef struct fat8_filename {
     uint8_t stem[6];
     uint8_t extension[3];
 } fat8_filename;
 
+// p165 h11.1
 typedef struct {
     char file_name[9]; // fat8_filename
     uint8_t attribute;
@@ -67,6 +75,14 @@ typedef struct fat8_file_block {
     uint8_t tab_position;
     uint8_t sector_buffer[128];
 } fat8_file_block;
+
+// p161 h7
+typedef enum fat8_disk_attribute
+{
+    FAT8_DSK_ATTRIB_READ_AFTER_WRITE  = 0100,
+    FAT8_DSK_ATTRIB_WRITE_PROTECTED   = 0020,
+    FAT8_DSK_ATTRIB_EBCDIC_CONVERSION = 0040
+} fat8_disk_attribute;
 #pragma pack(pop)
 
 #endif
