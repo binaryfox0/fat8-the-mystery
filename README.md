@@ -7,6 +7,10 @@
 - 8-bit wide FAT entry
 - 16 bytes directory entry[¹](#references)
 
+## Tools status
+> [!IMPORTANT]
+> The `calculate` command only works with CHS track, not the linear track like in the strings from TDISKBASIC. [See below](#mapped-files). Each linear track of that file have the size of 0x1000 bytes (4096)
+
 ## Mapped Files
 > [!IMPORTANT]  
 > These images are customized for this PC’s hardware and software configuration.      

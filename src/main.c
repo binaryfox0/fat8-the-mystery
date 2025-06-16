@@ -218,15 +218,19 @@ typedef struct calculate_chs_metadata {
 } calculate_chs_metadata;
 void calculate_chs_command(void* tmp) {
     calculate_chs_metadata* data = tmp;
-    int sectors_per_cylinder = data->sides_per_floppy * data->sectors_per_track;
 
-    int cylinder = data->offset / sectors_per_cylinder;
-    int temp = data->offset % sectors_per_cylinder;
+    int sectors_per_cylinder = data->sides_per_floppy * data->sectors_per_track;
+    int logical_sector = data->offset / data->sector_size;
+
+    int cylinder = logical_sector / sectors_per_cylinder;
+    int temp = logical_sector % sectors_per_cylinder;
 
     int head = temp / data->sectors_per_track;
-    int sector = (temp % data->sectors_per_track) + !data->base0;
+    int sector = (temp % data->sectors_per_track) + (data->base0 ? 0 : 1);
+
     printf("Output: C: %d, H: %d, S: %d\n", cylinder, head, sector);
 }
+
 
 int main(int argc, char** argv)
 {
@@ -254,6 +258,7 @@ int main(int argc, char** argv)
             false, "Offsets"),
         aparse_arg_number("base0",         0, sizeof(bool),     
             false, "If >0, sectors will start at 0-based indexing otherwise, using 1-based indexing"),
+        aparse_arg_end_marker
     };
     aparse_arg main_args[] = {
         aparse_arg_parser("command", (aparse_arg[]){
@@ -281,7 +286,8 @@ int main(int argc, char** argv)
                             "Calculate CHS coordinate with given offset", calculate_chs_metadata, 
                             sides_per_floppy, sectors_per_track, sector_size, offset, base0),
                         aparse_arg_end_marker
-                    })
+                    }),
+                    aparse_arg_end_marker
                 }, calculate_offset_command, 
                 "Calculate anything with given subcommand", 0, 0
             ),

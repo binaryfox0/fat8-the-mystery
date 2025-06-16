@@ -27,9 +27,6 @@ When using `strings` program, a meaningful text appeared to be the disk layout a
 *** track 18 side 1 holds user files
 *** tracks 19-34 hold user files
 ```
-We can calculate the offsets of each section using the following formula:   
-```offset = (((C * heads_per_sector + H) * sectors_per_track) + (S - 1)) * bytes_per_sector```   
-**Note**: track = cylinder(C); head(H) = side; sector(S)   
 Offsets of each section (in bytes):
 - 0x00000000 - 0x00000FFF unused (aka NULL)
 - 0x00001000 - 0x0000FFFF hold IPL program and BASIC (system disk only)
@@ -39,10 +36,6 @@ Offsets of each section (in bytes):
 - 0x00026000 - 0x00045FFF hold user files
 - 0x00046000 - 0x0004FFFF unused (aka NULL)
 ## Structure
-## Unknown structure
-At track 1 (0x1000) where the strings says the location of IPL (Initial Program Loader) and BASIC: There is two instructions: `jp 0xd049` and `jp 0xd02c` but it point to two identical structure if load to memory at address `0xd000`. Pointed to file offset `0x102C` and `0x1049` with the size of 0x1D (29) bytes, maybe refer to some metadata about the filesystem and even the address to load the OS.
-
-At track 18 side 1: where the strings says the location of user files
 ### FAT8 directory
 <details>
 <summary>Hex view</summary>
@@ -66,7 +59,7 @@ At track 18 side 1: where the strings says the location of user files
 ```
 </details>
 
-The FAT8 directory starts exactly at 0x24000 (C:18,H:0,S:0) and contains 15 used entries and 113 reserved entries  
+The FAT8 directory starts exactly at 0x24000 and contains 15 used entries and 113 reserved entries  
 "Each sector of the directory track contains eight file entries" [²˙¹](#credits-resources--reference), so inferred from that, each directory track will have 8 * 2 * 8 = 128 entries
 
 ### File Allocation Table
@@ -94,4 +87,4 @@ The FAT8 directory starts exactly at 0x24000 (C:18,H:0,S:0) and contains 15 used
 ```
 </details>
 
-The FAT table starts at offset 0x24d00 (C:18,H:0,S:14) appeared to have 2 copies of itself at offset 0x24e00 (C:18,H:0,S:15) and offset 0x24f00 (C:18,H:0,S:15) 
+The FAT table starts at offset 0x24d00 appeared to have 2 copies of itself at offset 0x24e00 and offset 0x24f00
